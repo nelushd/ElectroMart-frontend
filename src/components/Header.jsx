@@ -17,7 +17,7 @@ export default function Header() {
     <header className="bg-gray-800 text-white px-6 py-4 shadow-md flex items-center justify-between">
       {/* Logo or Home Link */}
       <Link to="/" className="text-2xl font-bold hover:text-orange-400">
-        🛍️ ElectroZone
+        🛍️ ElectroMart
       </Link>
 
       {/* Right Side Navigation */}
