@@ -1,57 +1,37 @@
-// src/user/ProductDetails.jsx
-import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-// import axios from 'axios';
+import { useEffect, useState } from "react";
+import axios from "axios";
 
-export default function ProductDetails() {
+function ProductDetails() {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
 
-  // Mock fetch – replace with real API later
   useEffect(() => {
-    const mockProducts = [
-      {
-        id: "p1",
-        name: "Smartphone XYZ",
-        price: 29999,
-        category: "Mobile Phones",
-        dimension: "75 x 160 x 8 mm",
-        description: "High-performance smartphone with great camera.",
-        availability: true,
-        image: "https://example.com/images/smartphone-xyz.jpg",
-      },
-    ];
-
-    const selected = mockProducts.find((p) => p.id === id);
-    setProduct(selected);
+    axios.get(`/api/products/${id}`)
+      .then(res => setProduct(res.data))
+      .catch(err => console.error("Product fetch failed", err));
   }, [id]);
 
-  if (!product) return <p className="p-6">Loading...</p>;
+  if (!product) return <p className="text-center text-gray-500">Loading...</p>;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="grid md:grid-cols-2 gap-6">
+    <div className="max-w-5xl mx-auto bg-white p-6 shadow rounded mt-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <img
-          src={product.image}
+          src={product.image?.[0] || "/default.png"}
           alt={product.name}
-          className="rounded shadow w-full h-auto object-contain"
+          className="w-full h-auto rounded"
         />
+
         <div>
-          <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
-          <p className="text-lg text-gray-600 mb-2">{product.category}</p>
-          <p className="text-xl font-bold text-indigo-600 mb-4">₹{product.price}</p>
-          <p className="mb-4 text-gray-700">{product.description}</p>
-          <p className="mb-2 text-sm text-gray-500">Dimension: {product.dimension}</p>
-          <p className="mb-4 text-sm">
-            Availability:{" "}
-            <span className={product.availability ? "text-green-600" : "text-red-600"}>
-              {product.availability ? "In Stock" : "Out of Stock"}
-            </span>
-          </p>
-          <button
-            className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
-            disabled={!product.availability}
-          >
+          <h1 className="text-2xl font-bold mb-2">{product.name}</h1>
+          <p className="text-xl text-green-700 mb-2">Rs. {product.price}</p>
+          <p className="text-gray-600 mb-2">{product.description}</p>
+          <p className="text-sm"><strong>Dimensions:</strong> {product.dimension}</p>
+          <p className="text-sm"><strong>Category:</strong> {product.category}</p>
+          <p className="text-sm"><strong>Status:</strong> {product.availability ? "In stock" : "Out of stock"}</p>
+
+          <button className="mt-4 bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700">
             Add to Cart
           </button>
         </div>
@@ -59,3 +39,5 @@ export default function ProductDetails() {
     </div>
   );
 }
+
+export default ProductDetails;
