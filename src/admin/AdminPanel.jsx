@@ -1,10 +1,12 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { jwtDecode } from 'jwt-decode';
 import { RiDashboard2Line } from "react-icons/ri";
-import { MdOutlineProductionQuantityLimits } from "react-icons/md";
-import { MdOutlineReviews } from "react-icons/md";
+import { MdOutlineProductionQuantityLimits, MdOutlineReviews } from "react-icons/md";
 import { HiQuestionMarkCircle } from "react-icons/hi";
 import { FaUserAlt } from "react-icons/fa";
+import { LuLogOut } from "react-icons/lu";
+
 
 import Dashboard from './Dashboard';
 import ProductPage from './ProductPage';
@@ -21,7 +23,26 @@ const menuItems = [
 ];
 
 function AdminPanel() {
-  const [activePage, setActivePage] = React.useState('dashboard');
+  const navigate = useNavigate();
+  const [activePage, setActivePage] = useState('dashboard'); // ✅ moved here
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const decoded = jwtDecode(token);
+      if (decoded.role !== 'admin') {
+        navigate('/'); // Not admin → redirect to home
+      }
+    } catch (err) {
+      console.error('Invalid token');
+      navigate('/login');
+    }
+  }, [navigate]); 
 
   const renderPage = () => {
     switch (activePage) {
@@ -44,19 +65,32 @@ function AdminPanel() {
       <aside className="w-64 bg-blue-900 text-white p-6 flex-shrink-0">
         <h2 className="text-2xl font-bold mb-6">Admin Panel</h2>
         <nav className="space-y-3">
-          {menuItems.map((item) => (
-            <button
-              key={item.key}
-              onClick={() => setActivePage(item.key)}
-              className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-blue-800 transition ${
-                activePage === item.key ? 'bg-blue-800' : ''
-              }`}
-            >
-              {item.icon}
-              <span>{item.name}</span>
-            </button>
-          ))}
-        </nav>
+  {menuItems.map((item) => (
+    <button
+      key={item.key}
+      onClick={() => setActivePage(item.key)}
+      className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-blue-800 transition ${
+        activePage === item.key ? 'bg-blue-800' : ''
+      }`}
+    >
+      {item.icon}
+      <span>{item.name}</span>
+    </button>
+  ))}
+
+  {/* Logout Button */}
+  <button
+  onClick={() => {
+    localStorage.removeItem('token');
+    navigate('/');
+  }}
+  className="w-full mt-10 flex items-center gap-3 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 transition"
+>
+  <LuLogOut className="text-white text-lg" />
+  <span className="text-white font-semibold">Logout</span>
+</button>
+</nav>
+
       </aside>
 
       {/* Content */}
