@@ -38,7 +38,7 @@ export default function Header() {
         ) : (
           <>
             <span className="text-sm text-gray-300 hidden sm:inline">
-              👋 {user?.firstName}
+              Hi, {user?.firstName}
             </span>
             <button
               onClick={handleLogout}

@@ -1,334 +1,213 @@
-import React, { useState, useEffect } from "react";
-import { FaEdit, FaTrash, FaPlus, FaTimes } from "react-icons/fa";
+import { useEffect, useState } from "react";
+import { FaPlus, FaTimes, FaEdit, FaTrash } from "react-icons/fa";
 
-export default function ProductPage() {
-  // Sample initial dummy data - replace with your backend data
-  const [products, setProducts] = useState([
-    {
-      key: "p1",
-      name: "Wooden Chair",
-      price: 1200,
-      category: "Furniture",
-      dimension: "40x40x90 cm",
-      description: "Comfortable wooden chair.",
-      availability: true,
-      image: [
-        "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=100&q=80",
-        "https://images.unsplash.com/photo-1505692794400-08d63b6f4ec4?auto=format&fit=crop&w=100&q=80",
-      ],
-    },
-    {
-      key: "p2",
-      name: "Table Lamp",
-      price: 750,
-      category: "Lighting",
-      dimension: "15x15x30 cm",
-      description: "Modern desk lamp with warm light.",
-      availability: false,
-      image: [
-        "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=100&q=80",
-      ],
-    },
-  ]);
+export default function Product() {
+  const [products, setProducts] = useState([]);
+  const [form, setForm] = useState({ key: "", name: "", price: "", category: "", dimension: "", description: "", availability: true, image: [""] });
+  const [editing, setEditing] = useState(null);
+  const [modal, setModal] = useState(false);
 
-  const [showModal, setShowModal] = useState(false);
-  const [editingKey, setEditingKey] = useState(null);
+  const api = async (method, url, data) => {
+    const token = localStorage.getItem('token');
+    const config = { method, headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } };
+    if (data) config.body = JSON.stringify(data);
 
-  const emptyForm = {
-    name: "",
-    price: "",
-    category: "",
-    dimension: "",
-    description: "",
-    availability: true,
-    image: [""], // array with one empty string by default
-  };
-
-  const [form, setForm] = useState(emptyForm);
-
-  // Handle input change for all fields except images
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-  };
-
-  // Handle individual image URL change by index
-  const handleImageChange = (index, value) => {
-    setForm((prev) => {
-      const newImages = [...prev.image];
-      newImages[index] = value;
-      return { ...prev, image: newImages };
-    });
-  };
-
-  // Add new image URL field
-  const addImageField = () => {
-    setForm((prev) => ({ ...prev, image: [...prev.image, ""] }));
-  };
-
-  // Remove image URL field by index
-  const removeImageField = (index) => {
-    setForm((prev) => {
-      const newImages = prev.image.filter((_, i) => i !== index);
-      return { ...prev, image: newImages.length ? newImages : [""] };
-    });
-  };
-
-  // Submit add or update product
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    const newKey = editingKey || `p${products.length + 1}`;
-
-    // Clean images by filtering empty strings
-    const cleanedImages = form.image.filter((url) => url.trim() !== "");
-
-    const newProduct = {
-      ...form,
-      price: Number(form.price), // convert price to number
-      key: newKey,
-      image: cleanedImages.length ? cleanedImages : [""], // fallback empty array
-    };
-
-    if (editingKey) {
-      setProducts((prev) =>
-        prev.map((p) => (p.key === editingKey ? newProduct : p))
-      );
-    } else {
-      setProducts((prev) => [...prev, newProduct]);
+    try {
+      const res = await fetch(`/api/products${url}`, config);
+      if (!res.ok) throw new Error((await res.json()).message);
+      return method !== 'DELETE' ? res.json() : null;
+    } catch (err) {
+      alert(err.message);
+      throw err;
     }
-
-    setForm(emptyForm);
-    setEditingKey(null);
-    setShowModal(false);
   };
 
-  // Edit product handler
-  const handleEdit = (product) => {
-    setForm({
-      ...product,
-      price: product.price.toString(), // make sure price is string for input
-      image: product.image.length ? product.image : [""],
-    });
-    setEditingKey(product.key);
-    setShowModal(true);
+  const fetchProducts = () => api('GET', '').then(setProducts).catch(() => {});
+
+  useEffect(() => { fetchProducts(); }, []);
+
+  const openModal = (product = null) => {
+    setForm(product || { key: "", name: "", price: "", category: "", dimension: "", description: "", availability: true, image: [""] });
+    setEditing(product?.key || null);
+    setModal(true);
   };
 
-  // Delete product handler with confirm
-  const handleDelete = (key) => {
-    if (window.confirm("Are you sure you want to delete this product?")) {
-      setProducts((prev) => prev.filter((p) => p.key !== key));
+  const closeModal = () => { setModal(false); setEditing(null); };
+
+  const handleSubmit = async () => {
+    if (!form.key || !form.name || !form.price) {
+      alert('Please fill required fields');
+      return;
     }
+    try {
+      await api(editing ? 'PUT' : 'POST', editing ? `/${editing}` : '', form);
+      fetchProducts();
+      closeModal();
+    } catch {}
+  };
+
+  const handleDelete = async (key) => {
+    if (confirm("Delete this product?")) {
+      try {
+        await api('DELETE', `/${key}`);
+        fetchProducts();
+      } catch {}
+    }
+  };
+
+  const updateForm = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
+  const updateImage = (index, value) => {
+    const images = [...form.image];
+    images[index] = value;
+    setForm(prev => ({ ...prev, image: images }));
   };
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">Product Management</h1>
-
-      <div className="flex justify-end mb-6">
-        <button
-          onClick={() => {
-            setForm(emptyForm);
-            setEditingKey(null);
-            setShowModal(true);
-          }}
-          className="inline-flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
-        >
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Products</h1>
+        <button onClick={() => openModal()} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center gap-2">
           <FaPlus /> Add Product
         </button>
       </div>
 
-      <div className="overflow-x-auto bg-white rounded shadow">
-        <table className="w-full text-left border-collapse border border-gray-300">
-          <thead className="bg-gray-200">
+      {/* Product Table */}
+      <div className="overflow-x-auto bg-white rounded-lg shadow">
+        <table className="min-w-full text-sm text-left">
+          <thead className="bg-gray-200 text-gray-700 uppercase text-xs">
             <tr>
-              <th className="border border-gray-300 p-3">Images</th>
-              <th className="border border-gray-300 p-3">Name</th>
-              <th className="border border-gray-300 p-3">Price (LKR)</th>
-              <th className="border border-gray-300 p-3">Category</th>
-              <th className="border border-gray-300 p-3">Dimension</th>
-              <th className="border border-gray-300 p-3">Available</th>
-              <th className="border border-gray-300 p-3">Actions</th>
+              <th className="px-4 py-3 w-32">Key</th>
+              <th className="px-4 py-3 w-24">Image</th>
+              <th className="px-4 py-3">Name</th>
+              <th className="px-4 py-3">Price</th>
+              <th className="px-4 py-3">Category</th>
+              <th className="px-4 py-3">Dimension</th>
+              <th className="px-4 py-3">Availability</th>
+              <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {products.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="text-center p-6 text-gray-600">
-                  No products found.
+            {products.map(p => (
+              <tr key={p.key} className="border-t hover:bg-gray-50">
+                <td className="px-4 py-2 font-medium text-gray-900">{p.key}</td>
+                <td className="px-4 py-2">
+                  <img src={p.image?.[0]} alt="Product" className="w-16 h-12 object-cover rounded" />
+                </td>
+                <td className="px-4 py-2">{p.name}</td>
+                <td className="px-4 py-2">Rs{p.price}</td>
+                <td className="px-4 py-2">{p.category}</td>
+                <td className="px-4 py-2">{p.dimension}</td>
+                <td className="px-4 py-2">
+                  <span className={`px-2 py-1 rounded text-sm ${p.availability ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    {p.availability ? 'Available' : 'Out of Stock'}
+                  </span>
+                </td>
+                <td className="px-4 py-2 space-x-2">
+                  <button onClick={() => openModal(p)} className="text-blue-600 hover:text-blue-800">
+                    <FaEdit />
+                  </button>
+                  <button onClick={() => handleDelete(p.key)} className="text-red-600 hover:text-red-800">
+                    <FaTrash />
+                  </button>
                 </td>
               </tr>
-            ) : (
-              products.map((p) => (
-                <tr key={p.key} className="border-t border-gray-300">
-                  <td className="p-2 border border-gray-300 flex space-x-2">
-                    {p.image.map((url, i) => (
-                      <img
-                        key={i}
-                        src={url || "https://via.placeholder.com/60"}
-                        alt={`${p.name} image ${i + 1}`}
-                        className="w-16 h-16 object-cover rounded"
-                      />
-                    ))}
-                  </td>
-                  <td className="p-2 border border-gray-300">{p.name}</td>
-                  <td className="p-2 border border-gray-300">{p.price}</td>
-                  <td className="p-2 border border-gray-300">{p.category}</td>
-                  <td className="p-2 border border-gray-300">{p.dimension}</td>
-                  <td className="p-2 border border-gray-300">
-                    {p.availability ? "Yes" : "No"}
-                  </td>
-                  <td className="p-2 border border-gray-300 flex justify-center space-x-3">
-                    <button
-                      onClick={() => handleEdit(p)}
-                      className="text-blue-600 hover:bg-blue-100 p-2 rounded"
-                      title="Edit product"
-                    >
-                      <FaEdit />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(p.key)}
-                      className="text-red-600 hover:bg-red-100 p-2 rounded"
-                      title="Delete product"
-                    >
-                      <FaTrash />
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
+            ))}
           </tbody>
         </table>
       </div>
 
       {/* Modal */}
-      {showModal && (
+      {modal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg max-w-lg w-full max-h-full overflow-y-auto p-6 relative">
-            <button
-              onClick={() => setShowModal(false)}
-              className="absolute top-4 right-4 text-gray-600 hover:text-gray-900"
-              aria-label="Close modal"
-            >
-              <FaTimes size={20} />
-            </button>
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h2 className="text-xl font-bold">{editing ? 'Edit' : 'Add'} Product</h2>
+              <button onClick={closeModal} className="text-gray-500 hover:text-gray-700">
+                <FaTimes size={20} />
+              </button>
+            </div>
 
-            <h2 className="text-2xl font-semibold mb-6">
-              {editingKey ? "Edit Product" : "Add Product"}
-            </h2>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <input
-                required
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                placeholder="Product Name"
-                className="w-full p-2 border rounded"
-              />
-
-              <input
-                required
-                type="number"
-                name="price"
-                value={form.price}
-                onChange={handleChange}
-                placeholder="Price (LKR)"
-                min={0}
-                className="w-full p-2 border rounded"
-              />
-
-              <input
-                required
-                name="category"
-                value={form.category}
-                onChange={handleChange}
-                placeholder="Category"
-                className="w-full p-2 border rounded"
-              />
-
-              <input
-                required
-                name="dimension"
-                value={form.dimension}
-                onChange={handleChange}
-                placeholder="Dimension (e.g. 40x40x90 cm)"
-                className="w-full p-2 border rounded"
-              />
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <input
+                  placeholder="Product Key"
+                  value={form.key}
+                  onChange={(e) => updateForm('key', e.target.value)}
+                  disabled={editing}
+                  className="border rounded px-3 py-2 disabled:bg-gray-100"
+                />
+                <input
+                  placeholder="Name"
+                  value={form.name}
+                  onChange={(e) => updateForm('name', e.target.value)}
+                  className="border rounded px-3 py-2"
+                />
+                <input
+                  type="number"
+                  placeholder="Price"
+                  value={form.price}
+                  onChange={(e) => updateForm('price', e.target.value)}
+                  className="border rounded px-3 py-2"
+                />
+                <input
+                  placeholder="Category"
+                  value={form.category}
+                  onChange={(e) => updateForm('category', e.target.value)}
+                  className="border rounded px-3 py-2"
+                />
+                <input
+                  placeholder="Dimension"
+                  value={form.dimension}
+                  onChange={(e) => updateForm('dimension', e.target.value)}
+                  className="border rounded px-3 py-2"
+                />
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={form.availability}
+                    onChange={(e) => updateForm('availability', e.target.checked)}
+                  />
+                  <span>Available</span>
+                </label>
+              </div>
 
               <textarea
-                required
-                name="description"
-                value={form.description}
-                onChange={handleChange}
                 placeholder="Description"
+                value={form.description}
+                onChange={(e) => updateForm('description', e.target.value)}
                 rows={3}
-                className="w-full p-2 border rounded"
+                className="w-full border rounded px-3 py-2"
               />
 
-              {/* Multiple images input */}
               <div>
-                <label className="block mb-1 font-semibold">Image URLs</label>
-                {form.image.map((url, i) => (
-                  <div key={i} className="flex items-center gap-2 mb-2">
-                    <input
-                      type="url"
-                      value={url}
-                      onChange={(e) => handleImageChange(i, e.target.value)}
-                      placeholder="Image URL"
-                      className="flex-grow p-2 border rounded"
-                      required={i === 0}
-                    />
-                    {form.image.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeImageField(i)}
-                        className="text-red-600 hover:text-red-900"
-                        aria-label="Remove image URL"
-                      >
-                        <FaTimes />
-                      </button>
-                    )}
-                  </div>
+                <label className="block text-sm font-medium mb-2">Images</label>
+                {form.image.map((img, i) => (
+                  <input
+                    key={i}
+                    placeholder={`Image URL ${i + 1}`}
+                    value={img}
+                    onChange={(e) => updateImage(i, e.target.value)}
+                    className="w-full border rounded px-3 py-2 mb-2"
+                  />
                 ))}
                 <button
                   type="button"
-                  onClick={addImageField}
-                  className="text-blue-600 hover:text-blue-900"
+                  onClick={() => setForm(prev => ({ ...prev, image: [...prev.image, ""] }))}
+                  className="text-blue-600 text-sm hover:underline"
                 >
-                  + Add another image
+                  + Add Image
                 </button>
               </div>
 
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  name="availability"
-                  checked={form.availability}
-                  onChange={handleChange}
-                />
-                Available
-              </label>
-
-              <div className="flex justify-between mt-6">
-                <button
-                  type="submit"
-                  className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
-                >
-                  {editingKey ? "Update" : "Create"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="text-gray-600 hover:text-black"
-                >
+              <div className="flex justify-end space-x-4 pt-4">
+                <button onClick={closeModal} className="px-4 py-2 border rounded hover:bg-gray-50">
                   Cancel
                 </button>
+                <button onClick={handleSubmit} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                  {editing ? 'Update' : 'Create'}
+                </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
