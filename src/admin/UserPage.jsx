@@ -2,29 +2,7 @@ import React, { useEffect, useState } from "react";
 import { FaEdit, FaTrash, FaPlus, FaTimes } from "react-icons/fa";
 
 export default function UserPage() {
-  // Dummy users data - replace with backend data later
-  const [users, setUsers] = useState([
-    {
-      email: "john@example.com",
-      firstName: "John",
-      lastName: "Doe",
-      role: "customer",
-      phone: "1234567890",
-      address: "123 Main St",
-      profilePicture:
-        "https://randomuser.me/api/portraits/men/32.jpg",
-    },
-    {
-      email: "admin@example.com",
-      firstName: "Admin",
-      lastName: "User",
-      role: "admin",
-      phone: "0987654321",
-      address: "456 Admin Rd",
-      profilePicture:
-        "https://randomuser.me/api/portraits/women/44.jpg",
-    },
-  ]);
+  const [users, setUsers] = useState([]);
 
   const emptyForm = {
     email: "",
@@ -41,52 +19,74 @@ export default function UserPage() {
   const [editingEmail, setEditingEmail] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  // Handle input change
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch("/api/users");
+      const data = await res.json();
+      setUsers(data);
+    } catch (err) {
+      console.error("Error fetching users", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-
-  // Open edit user modal
   const handleEditUser = (user) => {
     setForm(user);
     setEditingEmail(user.email);
     setShowModal(true);
   };
 
-  // Delete user with confirm
-  const handleDeleteUser = (email) => {
+  const handleDeleteUser = async (email) => {
     if (window.confirm("Are you sure you want to delete this user?")) {
-      setUsers((prev) => prev.filter((u) => u.email !== email));
+      try {
+        await fetch(`/api/users/${email}`, { method: "DELETE" });
+        fetchUsers();
+      } catch (err) {
+        console.error("Error deleting user", err);
+      }
     }
   };
 
-  // Submit form for add or update
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editingEmail) {
-      // Update existing user
-      setUsers((prev) =>
-        prev.map((u) => (u.email === editingEmail ? form : u))
-      );
-    } else {
-      // Add new user
-      if (users.some((u) => u.email === form.email)) {
-        alert("Email already exists!");
-        return;
+    try {
+      if (editingEmail) {
+        await fetch(`/api/users/${editingEmail}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+      } else {
+        await fetch("/api/users/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
       }
-      setUsers((prev) => [...prev, form]);
+      setShowModal(false);
+      setForm(emptyForm);
+      setEditingEmail(null);
+      fetchUsers();
+    } catch (err) {
+      console.error("Error saving user", err);
     }
-    setShowModal(false);
   };
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">User Management</h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-3xl font-bold text-gray-800">User Management</h1>
+      
+      </div>
 
-   
-     
       <div className="overflow-x-auto bg-white rounded shadow">
         <table className="w-full text-left border-collapse border border-gray-300">
           <thead className="bg-gray-200">
@@ -149,7 +149,7 @@ export default function UserPage() {
         </table>
       </div>
 
-      {/* Modal for add/edit user */}
+      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg max-w-lg w-full max-h-full overflow-y-auto p-6 relative">
